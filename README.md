@@ -74,3 +74,23 @@ npm run db:reset
 
 ### Performance
 Keyset pagination ensures O(log n) queries even with 1M+ transactions.
+
+## Redis + RateLimiter + Insights
+
+#### Backend APIs
+- ✅ `GET /api/insights/:id/summary` - Customer spending analytics
+- ✅ `POST /api/ingest/transactions` - Batch transaction upload
+- ✅ `GET /metrics` - Prometheus metrics endpoint
+
+#### Rate Limiting
+- **Algorithm:** Token bucket with Redis sorted sets
+- **Limit:** 5 requests/second per client
+- **Response:** 429 with `Retry-After` header
+- **Distributed:** Shared across all API instances via Redis
+
+#### Metrics Exposed
+````
+api_request_latency_ms (histogram)
+rate_limit_block_total (counter)
+agent_latency_ms (histogram)
+tool_call_total (counter)
