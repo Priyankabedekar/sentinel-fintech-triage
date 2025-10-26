@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets   = ["native", "linux-musl"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Customers
+model Customer {
+  id            String        @id @default(uuid())
+  name          String
+  email         String        @unique
+  phone         String?
+  kyc_level     Int           @default(1)
+  created_at    DateTime      @default(now())
+  
+  cards         Card[]
+  accounts      Account[]
+  transactions  Transaction[]
+  alerts        Alert[]
+  cases         Case[]
+  
+  @@map("customers")
+}
+
+// Cards
+model Card {
+  id            String        @id @default(uuid())
+  customer_id   String
+  last4         String
+  network       String        // visa, mastercard
+  status        String        @default("active") // active, frozen, closed
+  created_at    DateTime      @default(now())
+  
+  customer      Customer      @relation(fields: [customer_id], references: [id])
+  transactions  Transaction[]
+  
+  @@index([customer_id])
+  @@map("cards")
+}
+
+// Accounts
+model Account {
+  id            String    @id @default(uuid())
+  customer_id   String
+  balance_cents Int       @default(0)
+  currency      String    @default("INR")
+  created_at    DateTime  @default(now())
+  
+  customer      Customer  @relation(fields: [customer_id], references: [id])
+  
+  @@index([customer_id])
+  @@map("accounts")
+}
+
+// Transactions (the big table - will have 200k+ rows)
+model Transaction {
+  id            String    @id @default(uuid())
+  customer_id   String
+  card_id       String
+  mcc           String    // Merchant Category Code
+  merchant      String
+  amount_cents  Int
+  currency      String    @default("INR")
+  ts            DateTime  @default(now())
+  device_id     String?
+  country       String    @default("IN")
+  city          String?
+  status        String    @default("completed")
+  
+  customer      Customer  @relation(fields: [customer_id], references: [id])
+  card          Card      @relation(fields: [card_id], references: [id])
+  alerts        Alert[]
+  cases         Case[]
+  
+  // CRITICAL INDEXES for performance
+  @@index([customer_id, ts(sort: Desc)]) // For timeline queries
+  @@index([merchant])                     // For merchant analysis
+  @@index([mcc])                          // For category analysis
+  @@index([ts(sort: Desc)])              // For recent transactions
+  @@map("transactions")
+}
+
+// Alerts
+model Alert {
+  id              String    @id @default(uuid())
+  customer_id     String
+  suspect_txn_id  String?
+  created_at      DateTime  @default(now())
+  risk            String    // low, medium, high
+  status          String    @default("open") // open, closed, false_positive
+  reason          String?
+  
+  customer        Customer      @relation(fields: [customer_id], references: [id])
+  transaction     Transaction?  @relation(fields: [suspect_txn_id], references: [id])
+  triage_runs     TriageRun[]
+  
+  @@index([customer_id, status])
+  @@index([created_at])
+  @@map("alerts")
+}
+
+// Cases (disputes, fraud reports)
+model Case {
+  id            String      @id @default(uuid())
+  customer_id   String
+  txn_id        String?
+  type          String      // dispute, fraud, inquiry
+  status        String      @default("open")
+  reason_code   String?
+  created_at    DateTime    @default(now())
+  
+  customer      Customer    @relation(fields: [customer_id], references: [id])
+  transaction   Transaction? @relation(fields: [txn_id], references: [id])
+  events        CaseEvent[]
+  
+  @@index([customer_id])
+  @@index([status])
+  @@map("cases")
+}
+
+// Case Events (audit trail)
+model CaseEvent {
+  id            String    @id @default(uuid())
+  case_id       String
+  ts            DateTime  @default(now())
+  actor         String    // system, agent_id
+  action        String    // created, status_changed, note_added
+  payload_json  Json?
+  
+  case          Case      @relation(fields: [case_id], references: [id])
+  
+  @@index([case_id, ts])
+  @@map("case_events")
+}
+
+// Triage Runs (AI decision records)
+model TriageRun {
+  id              String        @id @default(uuid())
+  alert_id        String
+  started_at      DateTime      @default(now())
+  ended_at        DateTime?
+  risk            String?       // low, medium, high
+  reasons         Json?         // ["high_velocity", "unusual_location"]
+  fallback_used   Boolean       @default(false)
+  latency_ms      Int?
+  
+  alert           Alert         @relation(fields: [alert_id], references: [id])
+  traces          AgentTrace[]
+  
+  @@index([alert_id])
+  @@map("triage_runs")
+}
+
+// Agent Traces (observability)
+model AgentTrace {
+  run_id        String
+  seq           Int
+  step          String    // getProfile, riskSignals, decide
+  ok            Boolean
+  duration_ms   Int
+  detail_json   Json?
+  
+  run           TriageRun @relation(fields: [run_id], references: [id])
+  
+  @@id([run_id, seq])
+  @@map("agent_traces")
+}
+
+// Knowledge Base
+model KBDoc {
+  id            String    @id @default(uuid())
+  title         String
+  anchor        String    // URL fragment like #disputes
+  content_text  String
+  
+  @@map("kb_docs")
+}
+
+// Policies
+model Policy {
+  id            String    @id @default(uuid())
+  code          String    @unique
+  title         String
+  content_text  String
+  
+  @@map("policies")
+}
