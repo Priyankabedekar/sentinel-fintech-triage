@@ -64,6 +64,19 @@ services:
     working_dir: /app
     command: npm run dev
 
+  studio:
+    build: ./api
+    container_name: zeta-studio
+    ports:
+      - "5555:5555"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /app
+    command: npx prisma studio --hostname 0.0.0.0
+
 volumes:
   postgres_data:
   redis_data:

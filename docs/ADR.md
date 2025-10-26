@@ -90,3 +90,45 @@ redis.zcard('ratelimit:client') // Count tokens used
 - Fail-open on Redis error (may allow excess traffic)
 
 ---
+
+## ADR-005: Prometheus Metrics over Custom Logging
+
+**Decision:** Use Prometheus client to expose metrics at `/metrics` endpoint.
+
+**Rationale:**
+- **Industry standard:** Works with Grafana, Datadog, etc.
+- **Pull-based:** No need to push metrics to external service
+- **Efficient:** In-memory aggregation, minimal overhead
+- **Rich types:** Counters, gauges, histograms, summaries
+- **Labels:** Multi-dimensional metrics (method, route, status)
+
+**Metrics Exposed:**
+````
+api_request_latency_ms{method, route, status} (histogram)
+rate_limit_block_total{client} (counter)
+agent_latency_ms{agent, ok} (histogram)
+tool_call_total{tool, ok} (counter)
+
+---
+
+## ADR-006: Server-Side Analytics over Client-Side
+
+**Decision:** Calculate insights (categories, trends, anomalies) on the backend.
+
+**Rationale:**
+- **Security:** Don't expose all raw transactions to frontend
+- **Performance:** Process 200k rows on server, send ~100 aggregated data points
+- **Consistency:** Single source of truth for business logic
+- **Caching potential:** Can cache insights for minutes
+
+**Trade-offs:**
+- Higher server CPU usage
+- Cannot filter/drill-down without API call
+- Client is "dumb" (just displays data)
+
+**Future Optimization:**
+- Cache insights for 5 minutes (Redis)
+- Incremental updates (process only new transactions)
+- Pre-aggregate in database (materialized views)
+
+---

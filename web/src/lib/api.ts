@@ -34,6 +34,16 @@ export interface Transaction {
   card: { last4: string; network: string };
 }
 
+export interface Insights {
+  totalSpend: number;
+  transactionCount: number;
+  avgTransaction: number;
+  topMerchants: Array<{ merchant: string; count: number; total: number }>;
+  categories: Array<{ mcc: string; name: string; total: number; percentage: string }>;
+  monthlyTrend: Array<{ month: string; total: number }>;
+  anomalies: Array<{ id: string; merchant: string; amount: number; ts: string; zScore: string }>;
+}
+
 // API methods
 export const getCustomerProfile = (id: string) =>
   api.get<Customer>(`/api/customer/${id}/profile`);
@@ -43,3 +53,6 @@ export const getTransactions = (id: string, cursor?: string, limit = 20) =>
     `/api/customer/${id}/transactions`,
     { params: { cursor, limit } }
   );
+
+export const getInsights = (id: string, days = 90) =>
+  api.get<Insights>(`/api/insights/${id}/summary`, { params: { days } });
