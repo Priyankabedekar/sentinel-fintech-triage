@@ -56,3 +56,37 @@ where.OR = [
 **Trade-offs:**
 - Increased storage (20-30% overhead)
 - Slower writes (minimal impact at our scale)
+
+---
+
+## ADR-004: Token Bucket Rate Limiting with Redis
+
+**Decision:** Implement token bucket algorithm using Redis sorted sets.
+
+**Rationale:**
+- **Distributed:** Multiple API instances share rate limit state
+- **Atomic:** MULTI/EXEC ensures race-condition-free operations
+- **Efficient:** O(log n) sorted set operations
+- **Self-cleaning:** TTL automatically removes old data
+- **Fail-open:** On Redis error, allow request (availability over strict limiting)
+
+**Implementation:**
+```typescript
+// Sorted set: score = timestamp, member = unique ID
+redis.zadd('ratelimit:client', timestamp, `${timestamp}-${random}`)
+redis.zremrangebyscore('ratelimit:client', 0, timestamp - window)
+redis.zcard('ratelimit:client') // Count tokens used
+```
+
+**Alternatives Considered:**
+- **Leaky bucket:** More complex, no significant benefit
+- **Fixed window:** Burst at window boundaries
+- **Sliding window log:** Same as our implementation
+- **In-memory:** Doesn't work with multiple instances
+
+**Trade-offs:**
+- Requires Redis (adds dependency)
+- Network call per request (~2-5ms overhead)
+- Fail-open on Redis error (may allow excess traffic)
+
+---
