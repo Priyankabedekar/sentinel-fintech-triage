@@ -6,6 +6,8 @@ import { register } from './lib/metrics.js';
 import customerRouter from './routes/customer.js';
 import insightsRouter from './routes/insights.js';
 import ingestRouter from './routes/ingest.js';
+import triageRouter from './routes/triage.js';
+import alertsRouter from './routes/alerts.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,6 +33,8 @@ app.get('/metrics', async (req, res) => {
 app.use('/api/customer', rateLimitMiddleware, customerRouter);
 app.use('/api/insights', rateLimitMiddleware, insightsRouter);
 app.use('/api/ingest', rateLimitMiddleware, ingestRouter);
+app.use('/api/triage', triageRouter);
+app.use('/api/alerts', alertsRouter);
 
 app.listen(PORT, () => {
   console.log(`🚀 API running on http://localhost:${PORT}`);

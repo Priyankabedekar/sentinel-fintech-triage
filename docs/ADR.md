@@ -108,6 +108,7 @@ api_request_latency_ms{method, route, status} (histogram)
 rate_limit_block_total{client} (counter)
 agent_latency_ms{agent, ok} (histogram)
 tool_call_total{tool, ok} (counter)
+````
 
 ---
 
