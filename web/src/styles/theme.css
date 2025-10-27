@@ -69,6 +69,9 @@
     --color-text-primary: #f9fafb;
     --color-text-secondary: #d1d5db;
     --color-text-tertiary: #9ca3af;
+    --color-success-light: none;
+    --color-info-light: none;
+
   }
 }
 

@@ -6,7 +6,6 @@ export const register = new client.Registry();
 // Add default metrics
 client.collectDefaultMetrics({ register });
 
-// Custom metrics
 export const httpRequestDuration = new client.Histogram({
   name: 'api_request_latency_ms',
   help: 'HTTP request latency in milliseconds',

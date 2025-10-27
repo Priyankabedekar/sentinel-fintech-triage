@@ -1,15 +1,17 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { X, CheckCircle, AlertCircle, Loader2, Clock, Shield } from 'lucide-react';
 import { useTriageStream } from '../hooks/useTriageStream';
 import { useState, useEffect, useRef } from 'react';
 import '../styles/TriageDrawer.css';
+import axios from 'axios';
 
 interface TriageDrawerProps {
   runId: string | null;
-  alertId: string;
+  alert: any;
   onClose: () => void;
 }
 
-export default function TriageDrawer({ runId, alertId, onClose }: TriageDrawerProps) {
+export default function TriageDrawer({ runId, alert: alertData, onClose }: TriageDrawerProps) {
   const { events, isComplete, error } = useTriageStream(runId);
   const [actionTaken, setActionTaken] = useState(false);
   const [announcement, setAnnouncement] = useState('');
@@ -21,11 +23,8 @@ export default function TriageDrawer({ runId, alertId, onClose }: TriageDrawerPr
     previousFocusRef.current = document.activeElement as HTMLElement;
     closeButtonRef.current?.focus();
 
-    // Trap focus within drawer
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
+      if (e.key === 'Escape') onClose();
     };
 
     document.addEventListener('keydown', handleKeyDown);
@@ -35,9 +34,9 @@ export default function TriageDrawer({ runId, alertId, onClose }: TriageDrawerPr
     };
   }, [onClose]);
 
-  // Announce events to screen readers
+  // Announce latest event
   useEffect(() => {
-    const lastEvent = events[events.length - 1];
+    const lastEvent = events.at(-1);
     if (!lastEvent) return;
 
     if (lastEvent.type === 'step') {
@@ -57,22 +56,89 @@ export default function TriageDrawer({ runId, alertId, onClose }: TriageDrawerPr
   const result = completeEvent?.data;
 
   const getRiskColor = (risk?: string) => {
-    if (risk === 'high') return 'risk-high';
-    if (risk === 'medium') return 'risk-medium';
-    return 'risk-low';
+    switch (risk) {
+      case 'high': return 'risk-high';
+      case 'medium': return 'risk-medium';
+      default: return 'risk-low';
+    }
   };
 
   const getRecommendationText = (rec?: string) => {
-    if (rec === 'freeze_card') return '🧊 Freeze Card';
-    if (rec === 'contact_customer') return '📞 Contact Customer';
-    if (rec === 'mark_false_positive') return '✅ Mark False Positive';
-    return 'Analyzing...';
+    switch (rec) {
+      case 'freeze_card': return '🧊 Freeze Card';
+      case 'contact_customer': return '📞 Contact Customer';
+      case 'mark_false_positive': return '✅ Mark False Positive';
+      default: return 'Analyzing...';
+    }
   };
 
-  const handleAction = (action: string) => {
-    setAnnouncement(`Action ${action} recorded. Full implementation coming in Day 5.`);
-    alert(`Action: ${action}\n(API endpoints will be built in Day 5)`);
-    setActionTaken(true);
+  const handleAction = async (action: string) => {
+    setAnnouncement(`Executing action: ${action}...`);
+    try {
+      let response;
+
+      if (action === 'freeze_card') {
+        const profile = await axios.get(`http://localhost:3000/api/customer/${alertData.customer_id}/profile`);
+        const cardId = profile.data.cards[0]?.id;
+
+        if (!cardId) {
+          window.alert('No card found for this customer');
+          return;
+        }
+
+        response = await axios.post('http://localhost:3000/api/action/freeze-card', {
+          cardId,
+          reason: 'suspected_fraud',
+        });
+
+        if (response.data.status === 'PENDING_OTP') {
+          const otp = window.prompt('⚠️ OTP Required\n\nThis is a high-value account.\nEnter OTP (demo: 123456)');
+          if (!otp) {
+            setAnnouncement('OTP verification cancelled');
+            return;
+          }
+
+          response = await axios.post('http://localhost:3000/api/action/freeze-card', {
+            cardId,
+            otp,
+            reason: 'suspected_fraud',
+          });
+        }
+      } 
+      else if (action === 'open_dispute') {
+        if (!alertData.suspect_txn_id) {
+          window.alert('No transaction associated with this alert');
+          return;
+        }
+
+        response = await axios.post('http://localhost:3000/api/action/open-dispute', {
+          txnId: alertData.suspect_txn_id,
+          reasonCode: '10.4',
+          description: 'Customer did not authorize transaction',
+          confirm: true,
+        });
+      } 
+      else if (action === 'mark_false_positive') {
+        response = await axios.post('http://localhost:3000/api/action/mark-false-positive', {
+          alertId: alertData.id,
+          notes: 'Verified with customer - legitimate transaction',
+        });
+      }
+
+      if (response?.data) {
+        setActionTaken(true);
+        setAnnouncement(`Action completed: ${response.data.message}`);
+        const message = `✅ Success!\n\n${response.data.message}\n\n` +
+          `Case ID: ${response.data.caseId || 'N/A'}\n` +
+          `Status: ${response.data.status}`;
+        window.alert(message);
+      }
+    } catch (err: any) {
+      console.error('Action error:', err);
+      const msg = err.response?.data?.error || 'Action failed';
+      setAnnouncement(`Action failed: ${msg}`);
+      window.alert(`❌ Error: ${msg}`);
+    }
   };
 
   return (
@@ -83,25 +149,16 @@ export default function TriageDrawer({ runId, alertId, onClose }: TriageDrawerPr
       aria-labelledby="triage-title"
       aria-describedby="triage-description"
     >
-      {/* Live region for announcements */}
-      <div
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        className="sr-only"
-      >
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {announcement}
       </div>
 
       <div className="modal triage-drawer">
-        {/* Header */}
         <header className="modal-header">
           <div>
-            <h2 id="triage-title" className="triage-title">
-              AI Triage Analysis
-            </h2>
+            <h2 id="triage-title" className="triage-title">AI Triage Analysis</h2>
             <p id="triage-description" className="triage-subtitle">
-              Alert: {alertId.slice(0, 13)}...
+              {alertData.customer.name} • Alert: {alertData.id.slice(0, 8)}...
             </p>
           </div>
           <button
@@ -114,81 +171,58 @@ export default function TriageDrawer({ runId, alertId, onClose }: TriageDrawerPr
           </button>
         </header>
 
-        {/* Content */}
         <div className="modal-content">
-          {/* Progress Steps */}
           <section aria-labelledby="steps-heading">
             <h3 id="steps-heading" className="sr-only">Analysis Steps</h3>
             <ol className="steps-list">
               {steps.map((step, i) => {
-                const stepData = step.data;
+                const { name, success, duration_ms, result, error: stepError } = step.data;
                 return (
-                  <li
-                    key={i}
-                    className={`step-item ${stepData.success ? 'step-success' : 'step-error'}`}
-                  >
+                  <li key={i} className={`step-item ${success ? 'step-success' : 'step-error'}`}>
                     <div className="step-header">
                       <div className="step-title-group">
-                        {stepData.success ? (
-                          <CheckCircle className="step-icon" aria-label="Success" />
-                        ) : (
-                          <AlertCircle className="step-icon" aria-label="Error" />
-                        )}
-                        <span className="step-name">
-                          {stepData.name.replace(/([A-Z])/g, ' $1').trim()}
-                        </span>
+                        {success ? <CheckCircle className="step-icon" /> : <AlertCircle className="step-icon" />}
+                        <span className="step-name">{name.replace(/([A-Z])/g, ' $1').trim()}</span>
                       </div>
                       <div className="step-duration">
-                        <Clock size={14} aria-hidden="true" />
-                        <span>{stepData.duration_ms}ms</span>
+                        <Clock size={14} />
+                        <span>{duration_ms}ms</span>
                       </div>
                     </div>
-                    
-                    {stepData.result && (
+                    {result && (
                       <details className="step-details">
                         <summary className="step-summary">View details</summary>
-                        <pre className="step-result">
-                          {JSON.stringify(stepData.result, null, 2)}
-                        </pre>
+                        <pre className="step-result">{JSON.stringify(result, null, 2)}</pre>
                       </details>
                     )}
-                    
-                    {stepData.error && (
-                      <div className="step-error-message" role="alert">
-                        Error: {stepData.error}
-                      </div>
-                    )}
+                    {stepError && <div className="step-error-message">Error: {stepError}</div>}
                   </li>
                 );
               })}
             </ol>
           </section>
 
-          {/* Loading indicator */}
           {!isComplete && !error && (
             <div className="loading-indicator" role="status" aria-live="polite">
-              <Loader2 className="loading-spinner" aria-hidden="true" />
+              <Loader2 className="loading-spinner" />
               <span>Processing triage...</span>
             </div>
           )}
 
-          {/* Error */}
           {error && (
-            <div className="alert alert-danger" role="alert">
-              <AlertCircle size={20} aria-hidden="true" />
+            <div className="alert alert-danger">
+              <AlertCircle size={20} />
               <span>Error: {error}</span>
             </div>
           )}
 
-          {/* Result Summary */}
           {result && (
             <section aria-labelledby="results-heading" className="results-section">
               <h3 id="results-heading" className="results-title">
-                <Shield size={24} aria-hidden="true" />
+                <Shield size={24} />
                 Decision Summary
               </h3>
 
-              {/* Risk Level */}
               <div className={`risk-card ${getRiskColor(result.risk)}`}>
                 <div className="risk-content">
                   <span className="risk-label">Risk Level</span>
@@ -196,83 +230,52 @@ export default function TriageDrawer({ runId, alertId, onClose }: TriageDrawerPr
                 </div>
               </div>
 
-              {/* Recommendation */}
               <div className="recommendation-card">
                 <div className="recommendation-label">Recommended Action</div>
-                <div className="recommendation-value">
-                  {getRecommendationText(result.recommendation)}
-                </div>
+                <div className="recommendation-value">{getRecommendationText(result.recommendation)}</div>
                 <div className="recommendation-confidence">
                   Confidence: {(result.confidence * 100).toFixed(0)}%
                 </div>
               </div>
 
-              {/* Reasons */}
               <div className="reasons-card">
                 <div className="reasons-label">Risk Indicators</div>
                 <ul className="reasons-list">
                   {result.reasons.map((reason: string, i: number) => (
-                    <li key={i} className="reason-badge">
-                      {reason.replace(/_/g, ' ')}
-                    </li>
+                    <li key={i} className="reason-badge">{reason.replace(/_/g, ' ')}</li>
                   ))}
                 </ul>
               </div>
 
-              {/* Performance */}
               <div className="performance-card">
-                <div className="performance-label">
-                  <span>Total Duration</span>
-                </div>
-                <span className="performance-value">
-                  {result.totalDuration}ms
-                </span>
+                <div className="performance-label"><span>Total Duration</span></div>
+                <span className="performance-value">{result.totalDuration}ms</span>
               </div>
 
               {result.fallbackUsed && (
-                <div className="alert alert-warning" role="alert">
-                  ⚠️ Fallback strategy was used due to service unavailability
-                </div>
+                <div className="alert alert-warning">⚠️ Fallback strategy used due to service unavailability</div>
               )}
             </section>
           )}
         </div>
 
-        {/* Actions */}
         {isComplete && result && (
           <footer className="modal-footer">
             <div className="action-buttons">
-              <button
-                onClick={() => handleAction('freeze_card')}
-                disabled={actionTaken}
-                className="btn btn-danger action-btn"
-                aria-label="Freeze card"
-              >
+              <button onClick={() => handleAction('freeze_card')} disabled={actionTaken} className="btn btn-danger action-btn">
                 🧊 Freeze Card
               </button>
-              <button
-                onClick={() => handleAction('open_dispute')}
-                disabled={actionTaken}
-                className="btn btn-primary action-btn"
-                aria-label="Open dispute"
-              >
+              <button onClick={() => handleAction('open_dispute')} disabled={actionTaken} className="btn btn-primary action-btn">
                 📋 Open Dispute
               </button>
+              <button onClick={() => handleAction('mark_false_positive')} disabled={actionTaken} className="btn btn-success action-btn">
+                ✅ Mark False Positive
+              </button>
             </div>
-            <button
-              onClick={() => handleAction('mark_false_positive')}
-              disabled={actionTaken}
-              className="btn btn-success action-btn-full"
-              aria-label="Mark as false positive"
-            >
-              ✅ Mark False Positive
-            </button>
-            
-            {actionTaken && (
-              <div className="action-message" role="status" aria-live="polite">
-                Action recorded! (Full implementation later!)
-              </div>
-            )}
+
+            <div className={`action-message-container ${actionTaken ? 'visible' : ''}`}>
+              <div className="action-message">✅ Action recorded!</div>
+            </div>
           </footer>
         )}
       </div>

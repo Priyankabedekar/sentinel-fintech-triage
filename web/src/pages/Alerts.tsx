@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { AlertCircle, Play } from 'lucide-react';
 import TriageDrawer from '../components/TriageDrawer';
@@ -20,7 +21,7 @@ interface Alert {
 export default function Alerts() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedAlert, setSelectedAlert] = useState<string | null>(null);
+  const [selectedAlert, setSelectedAlert] = useState<any>(null);
   const [triageRunId, setTriageRunId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState('');
 
@@ -42,20 +43,19 @@ export default function Alerts() {
     }
   };
 
-  const startTriage = async (alertId: string) => {
+  const startTriage = async (alert: Alert) => {
     setAnnouncement('Starting triage analysis...');
     try {
       const { data } = await axios.post('http://localhost:3000/api/triage', {
-        alertId
+        alertId: alert.id
       });
       
-      setSelectedAlert(alertId);
+      setSelectedAlert(alert);
       setTriageRunId(data.runId);
       setAnnouncement('Triage started successfully');
     } catch (error) {
       console.error('Failed to start triage:', error);
       setAnnouncement('Failed to start triage analysis');
-      alert('Failed to start triage');
     }
   };
 
@@ -144,7 +144,7 @@ export default function Alerts() {
                   </td>
                   <td>
                     <button
-                      onClick={() => startTriage(alert.id)}
+                      onClick={() => startTriage(alert)}
                       className="btn btn-primary"
                       aria-label={`Open triage for ${alert.customer.name}`}
                     >
@@ -171,11 +171,12 @@ export default function Alerts() {
       {selectedAlert && triageRunId && (
         <TriageDrawer
           runId={triageRunId}
-          alertId={selectedAlert}
+          alert={selectedAlert}
           onClose={() => {
             setSelectedAlert(null);
             setTriageRunId(null);
             setAnnouncement('Triage drawer closed');
+            loadAlerts();
           }}
         />
       )}
