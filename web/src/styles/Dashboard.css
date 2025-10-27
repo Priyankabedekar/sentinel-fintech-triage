@@ -1,0 +1,233 @@
+.dashboard {
+  animation: fadeIn var(--transition-base);
+}
+
+.dashboard-header {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.dashboard-title {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.dashboard-subtitle {
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.input-group {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.input-group .input{
+flex: 1;
+}
+
+.alert {
+margin-top: var(--spacing-md);
+}
+
+/* KPI Grid */
+.kpi-grid {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+gap: var(--spacing-lg);
+margin-bottom: var(--spacing-2xl);
+}
+
+.kpi-card {
+background-color: var(--color-surface);
+border-radius: var(--radius-lg);
+box-shadow: var(--shadow-md);
+padding: var(--spacing-lg);
+transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.kpi-card:hover {
+transform: translateY(-2px);
+box-shadow: var(--shadow-lg);
+}
+
+.kpi-content {
+display: flex;
+align-items: center;
+justify-content: space-between;
+}
+
+.kpi-label {
+font-size: 0.875rem;
+color: var(--color-text-secondary);
+margin: 0 0 var(--spacing-sm) 0;
+font-weight: 500;
+}
+
+.kpi-value {
+font-size: 1.875rem;
+font-weight: 700;
+color: var(--color-text-primary);
+margin: 0;
+}
+
+.kpi-icon {
+width: 2.5rem;
+height: 2.5rem;
+opacity: 0.8;
+}
+
+.kpi-icon-primary { color: var(--color-primary); }
+
+.kpi-icon-success { color: var(--color-success); }
+
+.kpi-icon-info { color: var(--color-info); }
+
+.kpi-icon-warning { color: var(--color-warning); }
+
+/* Charts */
+.charts-section {
+margin-bottom: var(--spacing-2xl);
+}
+
+.charts-grid {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+gap: var(--spacing-lg);
+}
+
+.chart-title {
+font-size: 1.125rem;
+font-weight: 600;
+color: var(--color-text-primary);
+margin: 0;
+display: flex;
+align-items: center;
+gap: var(--spacing-sm);
+}
+
+/* Merchants List */
+.merchants-list {
+list-style: none;
+padding: 0;
+margin: 0;
+display: flex;
+flex-direction: column;
+gap: var(--spacing-sm);
+}
+
+.merchant-item {
+display: flex;
+align-items: center;
+justify-content: space-between;
+padding: var(--spacing-md);
+background-color: var(--color-background);
+border-radius: var(--radius-md);
+transition: background-color var(--transition-fast);
+}
+
+.merchant-item:hover {
+background-color: var(--color-primary-light);
+}
+
+.merchant-name {
+font-weight: 600;
+color: var(--color-text-primary);
+margin: 0 0 var(--spacing-xs) 0;
+}
+
+.merchant-count {
+font-size: 0.875rem;
+color: var(--color-text-secondary);
+margin: 0;
+}
+
+.merchant-total {
+font-size: 1.125rem;
+font-weight: 700;
+color: var(--color-primary);
+margin: 0;
+}
+
+/* Anomalies */
+.anomalies-list {
+list-style: none;
+padding: 0;
+margin: 0;
+display: flex;
+flex-direction: column;
+gap: var(--spacing-sm);
+}
+
+.anomaly-item {
+display: flex;
+align-items: center;
+justify-content: space-between;
+padding: var(--spacing-md);
+background-color: var(--color-warning-light);
+border: 1px solid var(--color-warning);
+border-radius: var(--radius-md);
+}
+
+.anomaly-merchant {
+font-weight: 600;
+color: var(--color-text-primary);
+margin: 0 0 var(--spacing-xs) 0;
+}
+
+.anomaly-details {
+font-size: 0.875rem;
+color: var(--color-text-secondary);
+margin: 0;
+}
+
+.anomaly-amount {
+font-size: 1.125rem;
+font-weight: 700;
+color: var(--color-warning);
+margin: 0;
+}
+
+/* Empty State */
+.empty-state {
+text-align: center;
+padding: var(--spacing-2xl);
+}
+
+.empty-icon {
+color: var(--color-text-tertiary);
+margin-bottom: var(--spacing-lg);
+}
+
+.empty-title {
+font-size: 1.125rem;
+font-weight: 600;
+color: var(--color-text-primary);
+margin: 0 0 var(--spacing-sm) 0;
+}
+
+.empty-subtitle {
+font-size: 0.875rem;
+color: var(--color-text-secondary);
+margin: 0;
+}
+
+.empty-subtitle code {
+background-color: var(--color-background);
+padding: var(--spacing-xs) var(--spacing-sm);
+border-radius: var(--radius-sm);
+font-family: 'Monaco', 'Courier New', monospace;
+font-size: 0.8125rem;
+}
+
+@media (max-width: 768px) {
+.kpi-grid {
+grid-template-columns: repeat(2, 1fr);
+}
+
+.charts-grid {
+grid-template-columns: 1fr;
+}
+}

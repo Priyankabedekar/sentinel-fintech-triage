@@ -1,35 +1,60 @@
-import { Outlet, Link } from 'react-router-dom';
-import { BarChart3,AlertCircle } from 'lucide-react';
+import { Outlet, Link, useLocation } from 'react-router-dom';
+import { BarChart3, AlertCircle, Home } from 'lucide-react';
+import '../styles/Layout.css';
 
 export default function Layout() {
+  const location = useLocation();
+
+  const isActive = (path: string) => {
+    return location.pathname === path;
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-8">
-              <h1 className="text-xl font-bold text-gray-900">Zeta Sentinel</h1>
-              <div className="flex gap-4">
-                <Link
-                  to="/"
-                  className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded"
-                >
-                  <BarChart3 size={20} />
-                  Dashboard
-                </Link>
-                <Link
-                  to="/alerts"
-                  className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded"
-                >
-                  <AlertCircle size={20} />
-                  Alerts
-                </Link>
-              </div>
-            </div>
+    <div className="layout">
+      {/* Skip to main content for accessibility */}
+      <a href="#main-content" className="skip-to-main">
+        Skip to main content
+      </a>
+
+      {/* Navigation */}
+      <nav className="nav" role="navigation" aria-label="Main navigation">
+        <div className="nav-container">
+          <div className="nav-brand">
+            <Home className="nav-icon" aria-hidden="true" />
+            <h1 className="nav-title">Zeta Sentinel</h1>
           </div>
+          
+          <ul className="nav-links" role="menubar">
+            <li role="none">
+              <Link
+                to="/"
+                className={`nav-link ${isActive('/') ? 'nav-link-active' : ''}`}
+                role="menuitem"
+                aria-current={isActive('/') ? 'page' : undefined}
+              >
+                <BarChart3 size={20} aria-hidden="true" />
+                <span>Dashboard</span>
+              </Link>
+            </li>
+            <li role="none">
+              <Link
+                to="/alerts"
+                className={`nav-link ${isActive('/alerts') ? 'nav-link-active' : ''}`}
+                role="menuitem"
+                aria-current={isActive('/alerts') ? 'page' : undefined}
+              >
+                <AlertCircle size={20} aria-hidden="true" />
+                <span>Alerts</span>
+              </Link>
+            </li>
+          </ul>
         </div>
       </nav>
-      <Outlet />
+
+      {/* Main Content */}
+      <main id="main-content" className="main-content" role="main">
+        <Outlet />
+      </main>
     </div>
   );
 }

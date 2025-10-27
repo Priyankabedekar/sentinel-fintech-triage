@@ -1,6 +1,7 @@
-import { X, CheckCircle, AlertCircle, Loader2, Clock, TrendingUp, Shield } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Loader2, Clock, Shield } from 'lucide-react';
 import { useTriageStream } from '../hooks/useTriageStream';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import '../styles/TriageDrawer.css';
 
 interface TriageDrawerProps {
   runId: string | null;
@@ -11,15 +12,54 @@ interface TriageDrawerProps {
 export default function TriageDrawer({ runId, alertId, onClose }: TriageDrawerProps) {
   const { events, isComplete, error } = useTriageStream(runId);
   const [actionTaken, setActionTaken] = useState(false);
+  const [announcement, setAnnouncement] = useState('');
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  // Save focus on mount, restore on unmount
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement as HTMLElement;
+    closeButtonRef.current?.focus();
+
+    // Trap focus within drawer
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previousFocusRef.current?.focus();
+    };
+  }, [onClose]);
+
+  // Announce events to screen readers
+  useEffect(() => {
+    const lastEvent = events[events.length - 1];
+    if (!lastEvent) return;
+
+    if (lastEvent.type === 'step') {
+      const step = lastEvent.data;
+      setAnnouncement(
+        `Step ${step.name} ${step.success ? 'completed' : 'failed'} in ${step.duration_ms} milliseconds`
+      );
+    } else if (lastEvent.type === 'complete') {
+      setAnnouncement('Triage analysis complete. Review the recommendations.');
+    } else if (lastEvent.type === 'error') {
+      setAnnouncement(`Error: ${lastEvent.data?.message || 'Unknown error'}`);
+    }
+  }, [events]);
 
   const steps = events.filter(e => e.type === 'step');
   const completeEvent = events.find(e => e.type === 'complete');
   const result = completeEvent?.data;
 
   const getRiskColor = (risk?: string) => {
-    if (risk === 'high') return 'text-red-600 bg-red-50 border-red-200';
-    if (risk === 'medium') return 'text-orange-600 bg-orange-50 border-orange-200';
-    return 'text-green-600 bg-green-50 border-green-200';
+    if (risk === 'high') return 'risk-high';
+    if (risk === 'medium') return 'risk-medium';
+    return 'risk-low';
   };
 
   const getRecommendationText = (rec?: string) => {
@@ -30,172 +70,191 @@ export default function TriageDrawer({ runId, alertId, onClose }: TriageDrawerPr
   };
 
   const handleAction = (action: string) => {
+    setAnnouncement(`Action ${action} recorded. Full implementation coming in Day 5.`);
     alert(`Action: ${action}\n(API endpoints will be built in Day 5)`);
     setActionTaken(true);
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div
+      className="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="triage-title"
+      aria-describedby="triage-description"
+    >
+      {/* Live region for announcements */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {announcement}
+      </div>
+
+      <div className="modal triage-drawer">
         {/* Header */}
-        <div className="p-6 border-b flex justify-between items-center bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+        <header className="modal-header">
           <div>
-            <h2 className="text-2xl font-bold">AI Triage Analysis</h2>
-            <p className="text-sm text-blue-100">Alert: {alertId.slice(0, 8)}...</p>
+            <h2 id="triage-title" className="triage-title">
+              AI Triage Analysis
+            </h2>
+            <p id="triage-description" className="triage-subtitle">
+              Alert: {alertId.slice(0, 13)}...
+            </p>
           </div>
           <button
+            ref={closeButtonRef}
             onClick={onClose}
-            className="p-2 hover:bg-white/20 rounded-lg transition"
+            className="close-button"
+            aria-label="Close triage drawer"
           >
-            <X size={24} />
+            <X size={24} aria-hidden="true" />
           </button>
-        </div>
+        </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="modal-content">
           {/* Progress Steps */}
-          <div className="space-y-3">
-            {steps.map((step, i) => {
-              const stepData = step.data;
-              return (
-                <div
-                  key={i}
-                  className={`p-4 rounded-lg border-2 ${
-                    stepData.success
-                      ? 'bg-green-50 border-green-200'
-                      : 'bg-red-50 border-red-200'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      {stepData.success ? (
-                        <CheckCircle className="text-green-600" size={20} />
-                      ) : (
-                        <AlertCircle className="text-red-600" size={20} />
-                      )}
-                      <span className="font-semibold text-gray-900">
-                        {stepData.name.replace(/([A-Z])/g, ' $1').trim()}
-                      </span>
+          <section aria-labelledby="steps-heading">
+            <h3 id="steps-heading" className="sr-only">Analysis Steps</h3>
+            <ol className="steps-list">
+              {steps.map((step, i) => {
+                const stepData = step.data;
+                return (
+                  <li
+                    key={i}
+                    className={`step-item ${stepData.success ? 'step-success' : 'step-error'}`}
+                  >
+                    <div className="step-header">
+                      <div className="step-title-group">
+                        {stepData.success ? (
+                          <CheckCircle className="step-icon" aria-label="Success" />
+                        ) : (
+                          <AlertCircle className="step-icon" aria-label="Error" />
+                        )}
+                        <span className="step-name">
+                          {stepData.name.replace(/([A-Z])/g, ' $1').trim()}
+                        </span>
+                      </div>
+                      <div className="step-duration">
+                        <Clock size={14} aria-hidden="true" />
+                        <span>{stepData.duration_ms}ms</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Clock size={14} />
-                      <span>{stepData.duration_ms}ms</span>
-                    </div>
-                  </div>
-                  
-                  {stepData.result && (
-                    <pre className="text-xs bg-white p-3 rounded border mt-2 overflow-auto max-h-32">
-                      {JSON.stringify(stepData.result, null, 2)}
-                    </pre>
-                  )}
-                  
-                  {stepData.error && (
-                    <div className="text-sm text-red-700 mt-2">
-                      Error: {stepData.error}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    
+                    {stepData.result && (
+                      <details className="step-details">
+                        <summary className="step-summary">View details</summary>
+                        <pre className="step-result">
+                          {JSON.stringify(stepData.result, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                    
+                    {stepData.error && (
+                      <div className="step-error-message" role="alert">
+                        Error: {stepData.error}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
 
           {/* Loading indicator */}
           {!isComplete && !error && (
-            <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg">
-              <Loader2 className="animate-spin text-blue-600" size={20} />
-              <span className="text-blue-900 font-medium">
-                Processing triage...
-              </span>
+            <div className="loading-indicator" role="status" aria-live="polite">
+              <Loader2 className="loading-spinner" aria-hidden="true" />
+              <span>Processing triage...</span>
             </div>
           )}
 
           {/* Error */}
           {error && (
-            <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
-              <div className="flex items-center gap-2 text-red-800">
-                <AlertCircle size={20} />
-                <span className="font-semibold">Error: {error}</span>
-              </div>
+            <div className="alert alert-danger" role="alert">
+              <AlertCircle size={20} aria-hidden="true" />
+              <span>Error: {error}</span>
             </div>
           )}
 
           {/* Result Summary */}
           {result && (
-            <div className="space-y-4 pt-4 border-t-2">
-              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <Shield size={24} className="text-blue-600" />
+            <section aria-labelledby="results-heading" className="results-section">
+              <h3 id="results-heading" className="results-title">
+                <Shield size={24} aria-hidden="true" />
                 Decision Summary
               </h3>
 
               {/* Risk Level */}
-              <div className={`p-4 rounded-lg border-2 ${getRiskColor(result.risk)}`}>
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-lg">Risk Level</span>
-                  <span className="font-bold text-2xl uppercase">{result.risk}</span>
+              <div className={`risk-card ${getRiskColor(result.risk)}`}>
+                <div className="risk-content">
+                  <span className="risk-label">Risk Level</span>
+                  <span className="risk-value">{result.risk}</span>
                 </div>
               </div>
 
               {/* Recommendation */}
-              <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
-                <div className="font-semibold text-gray-700 mb-2">Recommended Action</div>
-                <div className="text-xl font-bold text-blue-900">
+              <div className="recommendation-card">
+                <div className="recommendation-label">Recommended Action</div>
+                <div className="recommendation-value">
                   {getRecommendationText(result.recommendation)}
                 </div>
-                <div className="text-sm text-gray-600 mt-2">
+                <div className="recommendation-confidence">
                   Confidence: {(result.confidence * 100).toFixed(0)}%
                 </div>
               </div>
 
               {/* Reasons */}
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="font-semibold text-gray-700 mb-2">Risk Indicators</div>
-                <div className="flex flex-wrap gap-2">
+              <div className="reasons-card">
+                <div className="reasons-label">Risk Indicators</div>
+                <ul className="reasons-list">
                   {result.reasons.map((reason: string, i: number) => (
-                    <span
-                      key={i}
-                      className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-medium"
-                    >
+                    <li key={i} className="reason-badge">
                       {reason.replace(/_/g, ' ')}
-                    </span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
 
               {/* Performance */}
-              <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="text-purple-600" size={20} />
-                  <span className="text-sm font-medium text-gray-700">Total Duration</span>
+              <div className="performance-card">
+                <div className="performance-label">
+                  <span>Total Duration</span>
                 </div>
-                <span className="font-bold text-purple-900">
+                <span className="performance-value">
                   {result.totalDuration}ms
                 </span>
               </div>
 
               {result.fallbackUsed && (
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+                <div className="alert alert-warning" role="alert">
                   ⚠️ Fallback strategy was used due to service unavailability
                 </div>
               )}
-            </div>
+            </section>
           )}
         </div>
 
         {/* Actions */}
         {isComplete && result && (
-          <div className="p-6 border-t bg-gray-50 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+          <footer className="modal-footer">
+            <div className="action-buttons">
               <button
                 onClick={() => handleAction('freeze_card')}
                 disabled={actionTaken}
-                className="px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold transition"
+                className="btn btn-danger action-btn"
+                aria-label="Freeze card"
               >
                 🧊 Freeze Card
               </button>
               <button
                 onClick={() => handleAction('open_dispute')}
                 disabled={actionTaken}
-                className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold transition"
+                className="btn btn-primary action-btn"
+                aria-label="Open dispute"
               >
                 📋 Open Dispute
               </button>
@@ -203,17 +262,18 @@ export default function TriageDrawer({ runId, alertId, onClose }: TriageDrawerPr
             <button
               onClick={() => handleAction('mark_false_positive')}
               disabled={actionTaken}
-              className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold transition"
+              className="btn btn-success action-btn-full"
+              aria-label="Mark as false positive"
             >
               ✅ Mark False Positive
             </button>
             
             {actionTaken && (
-              <div className="text-center text-sm text-gray-600">
-                Action recorded! (Full implementation in Day 5)
+              <div className="action-message" role="status" aria-live="polite">
+                Action recorded! (Full implementation later!)
               </div>
             )}
-          </div>
+          </footer>
         )}
       </div>
     </div>

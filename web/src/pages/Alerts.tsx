@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { AlertCircle, Play } from 'lucide-react';
 import TriageDrawer from '../components/TriageDrawer';
 import axios from 'axios';
+import '../styles/Alerts.css';
 
 interface Alert {
   id: string;
@@ -21,23 +22,28 @@ export default function Alerts() {
   const [loading, setLoading] = useState(true);
   const [selectedAlert, setSelectedAlert] = useState<string | null>(null);
   const [triageRunId, setTriageRunId] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState('');
 
   useEffect(() => {
     loadAlerts();
   }, []);
 
   const loadAlerts = async () => {
+    setAnnouncement('Loading alerts...');
     try {
       const { data } = await axios.get('http://localhost:3000/api/alerts');
       setAlerts(data.alerts || []);
+      setAnnouncement(`Loaded ${data.alerts?.length || 0} alerts`);
     } catch (error) {
       console.error('Failed to load alerts:', error);
+      setAnnouncement('Failed to load alerts');
     } finally {
       setLoading(false);
     }
   };
 
   const startTriage = async (alertId: string) => {
+    setAnnouncement('Starting triage analysis...');
     try {
       const { data } = await axios.post('http://localhost:3000/api/triage', {
         alertId
@@ -45,111 +51,121 @@ export default function Alerts() {
       
       setSelectedAlert(alertId);
       setTriageRunId(data.runId);
+      setAnnouncement('Triage started successfully');
     } catch (error) {
       console.error('Failed to start triage:', error);
+      setAnnouncement('Failed to start triage analysis');
       alert('Failed to start triage');
     }
   };
 
-  const getRiskBadge = (risk: string) => {
-    const colors = {
-      high: 'bg-red-100 text-red-800 border-red-300',
-      medium: 'bg-orange-100 text-orange-800 border-orange-300',
-      low: 'bg-green-100 text-green-800 border-green-300'
+  const getRiskClass = (risk: string) => {
+    const classes = {
+      high: 'badge-high',
+      medium: 'badge-medium',
+      low: 'badge-low'
     };
-    return colors[risk as keyof typeof colors] || colors.low;
+    return classes[risk as keyof typeof classes] || 'badge-low';
   };
 
   if (loading) {
     return (
-      <div className="p-8 text-center">
-        <div className="text-gray-600">Loading alerts...</div>
+      <div className="alerts-loading" role="status" aria-live="polite">
+        <div className="skeleton" style={{ height: '4rem', width: '100%' }}></div>
+        <div className="skeleton" style={{ height: '20rem', width: '100%', marginTop: 'var(--spacing-lg)' }}></div>
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
+    <div className="alerts-page">
+      {/* Live region for announcements */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {announcement}
+      </div>
+
+      <header className="alerts-header">
         <div>
-          <h1 className="text-4xl font-bold text-gray-900">Alerts Queue</h1>
-          <p className="text-gray-600 mt-2">
-            {alerts.length} open alerts require attention
+          <h1 className="alerts-title">Alerts Queue</h1>
+          <p className="alerts-subtitle">
+            <span className="sr-only">{alerts.length} alerts require attention</span>
+            <span aria-hidden="true">
+              {alerts.length} open alert{alerts.length !== 1 ? 's' : ''} require attention
+            </span>
           </p>
         </div>
-      </div>
+      </header>
 
       {/* Alerts Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Customer
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Risk
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Reason
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Created
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Action
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {alerts.map((alert) => (
-              <tr key={alert.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4">
-                  <div>
-                    <div className="font-medium text-gray-900">
-                      {alert.customer.name}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {alert.customer.email}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold border ${getRiskBadge(
-                      alert.risk
-                    )}`}
-                  >
-                    {alert.risk.toUpperCase()}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-600">
-                  {alert.reason || 'Unknown'}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-600">
-                  {new Date(alert.created_at).toLocaleDateString()}
-                </td>
-                <td className="px-6 py-4">
-                  <button
-                    onClick={() => startTriage(alert.id)}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
-                  >
-                    <Play size={16} />
-                    Open Triage
-                  </button>
-                </td>
+      <section aria-labelledby="alerts-table-heading">
+        <h2 id="alerts-table-heading" className="sr-only">List of Alerts</h2>
+        <div className="table-container">
+          <table className="table" role="table">
+            <thead>
+              <tr>
+                <th scope="col">Customer</th>
+                <th scope="col">Risk Level</th>
+                <th scope="col">Reason</th>
+                <th scope="col">Created Date</th>
+                <th scope="col">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {alerts.map((alert) => (
+                <tr key={alert.id}>
+                  <td>
+                    <div className="customer-cell">
+                      <div className="customer-name">{alert.customer.name}</div>
+                      <div className="customer-email">{alert.customer.email}</div>
+                    </div>
+                  </td>
+                  <td>
+                    <span className={`badge ${getRiskClass(alert.risk)}`}>
+                      <span className="sr-only">Risk level: </span>
+                      {alert.risk.toUpperCase()}
+                    </span>
+                  </td>
+                  <td>
+                    <span className="alert-reason">{alert.reason || 'Unknown'}</span>
+                  </td>
+                  <td>
+                    <time dateTime={alert.created_at}>
+                      {new Date(alert.created_at).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </time>
+                  </td>
+                  <td>
+                    <button
+                      onClick={() => startTriage(alert.id)}
+                      className="btn btn-primary"
+                      aria-label={`Open triage for ${alert.customer.name}`}
+                    >
+                      <Play size={16} aria-hidden="true" />
+                      <span>Open Triage</span>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-        {alerts.length === 0 && (
-          <div className="p-12 text-center text-gray-500">
-            <AlertCircle size={48} className="mx-auto mb-4 text-gray-400" />
-            <p>No alerts in queue</p>
-          </div>
-        )}
-      </div>
+          {alerts.length === 0 && (
+            <div className="empty-state">
+              <AlertCircle size={48} className="empty-icon" aria-hidden="true" />
+              <p className="empty-title">No alerts in queue</p>
+              <p className="empty-subtitle">All clear! No alerts require attention at this time.</p>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Triage Drawer */}
       {selectedAlert && triageRunId && (
@@ -159,6 +175,7 @@ export default function Alerts() {
           onClose={() => {
             setSelectedAlert(null);
             setTriageRunId(null);
+            setAnnouncement('Triage drawer closed');
           }}
         />
       )}
