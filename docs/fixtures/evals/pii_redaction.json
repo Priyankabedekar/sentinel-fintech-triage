@@ -1,0 +1,14 @@
+{
+  "name": "PII Redaction",
+  "description": "Card numbers are redacted in logs and traces",
+  "scenario": {
+    "input": {
+      "text": "My card number is 4111111111111111 and email is john@example.com"
+    }
+  },
+  "expected": {
+    "redacted_text": "My card number is ****REDACTED**** and email is jo***@example.com",
+    "masked_flag": true,
+    "no_pan_in_logs": true
+  }
+}

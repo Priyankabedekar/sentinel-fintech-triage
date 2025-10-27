@@ -1,0 +1,22 @@
+[
+  {
+    "id": "device_001",
+    "device_fingerprint": "fp_chrome_mac_192.168.1.1",
+    "device_type": "desktop",
+    "os": "macOS",
+    "browser": "Chrome",
+    "first_seen": "2025-09-01T00:00:00Z",
+    "last_seen": "2025-10-25T12:00:00Z",
+    "trusted": true
+  },
+  {
+    "id": "device_002",
+    "device_fingerprint": "fp_safari_iphone_10.0.0.1",
+    "device_type": "mobile",
+    "os": "iOS",
+    "browser": "Safari",
+    "first_seen": "2025-10-20T00:00:00Z",
+    "last_seen": "2025-10-25T10:00:00Z",
+    "trusted": false
+  }
+]

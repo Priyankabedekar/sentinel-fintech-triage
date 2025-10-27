@@ -1,0 +1,21 @@
+{
+  "name": "Freeze Card with OTP",
+  "description": "High-value account requires OTP verification before freezing card",
+  "scenario": {
+    "customer": {
+      "kyc_level": 3,
+      "account_balance_cents": 500000
+    },
+    "alert": {
+      "risk": "high",
+      "reason": "high_velocity"
+    }
+  },
+  "expected": {
+    "recommendation": "freeze_card",
+    "requires_otp": true,
+    "otp_value": "123456",
+    "final_status": "FROZEN",
+    "trace_shows_freeze_ok": true
+  }
+}

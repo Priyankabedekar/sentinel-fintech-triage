@@ -1,0 +1,180 @@
+{
+  "info": {
+    "name": "Zeta Sentinel API",
+    "description": "Complete API collection for fintech case resolution system",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "api_key",
+      "value": "zeta_dev_key_12345"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health & Metrics",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health"
+          }
+        },
+        {
+          "name": "Prometheus Metrics",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/metrics"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer & Insights",
+      "item": [
+        {
+          "name": "Get Customer Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/customer/{{customer_id}}/profile"
+          }
+        },
+        {
+          "name": "Get Customer Transactions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/customer/{{customer_id}}/transactions?limit=20",
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "cursor", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Customer Insights",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/insights/{{customer_id}}/summary?days=90",
+              "query": [
+                { "key": "days", "value": "90" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Alerts & Triage",
+      "item": [
+        {
+          "name": "List Alerts",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/alerts"
+          }
+        },
+        {
+          "name": "Start Triage",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/triage",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alertId\": \"{{alert_id}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Stream Triage Events (SSE)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/triage/{{run_id}}/stream"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Actions (Requires API Key)",
+      "item": [
+        {
+          "name": "Freeze Card",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/action/freeze-card",
+            "header": [
+              { "key": "X-API-Key", "value": "{{api_key}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardId\": \"{{card_id}}\",\n  \"otp\": \"123456\",\n  \"reason\": \"suspected_fraud\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Open Dispute",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/action/open-dispute",
+            "header": [
+              { "key": "X-API-Key", "value": "{{api_key}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"txnId\": \"{{txn_id}}\",\n  \"reasonCode\": \"10.4\",\n  \"description\": \"Unauthorized transaction\",\n  \"confirm\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Mark False Positive",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/action/mark-false-positive",
+            "header": [
+              { "key": "X-API-Key", "value": "{{api_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alertId\": \"{{alert_id}}\",\n  \"notes\": \"Verified with customer\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ingest",
+      "item": [
+        {
+          "name": "Ingest Transactions",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/ingest/transactions",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactions\": [\n    {\n      \"customer_id\": \"{{customer_id}}\",\n      \"card_id\": \"{{card_id}}\",\n      \"merchant\": \"Test Merchant\",\n      \"amount_cents\": 10000,\n      \"mcc\": \"5411\",\n      \"currency\": \"INR\"\n    }\n  ]\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

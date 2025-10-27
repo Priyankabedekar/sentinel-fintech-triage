@@ -1,0 +1,14 @@
+{
+  "name": "Risk Tool Timeout Fallback",
+  "description": "System uses fallback when risk service fails",
+  "scenario": {
+    "simulate_failure": "riskSignals",
+    "timeout_ms": 1000
+  },
+  "expected": {
+    "fallback_used": true,
+    "risk": "medium",
+    "reason_includes": "risk_unavailable",
+    "sse_event": "fallback_triggered"
+  }
+}
