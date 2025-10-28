@@ -3,7 +3,7 @@ import { X, CheckCircle, AlertCircle, Loader2, Clock, Shield } from 'lucide-reac
 import { useTriageStream } from '../hooks/useTriageStream';
 import { useState, useEffect, useRef } from 'react';
 import '../styles/TriageDrawer.css';
-import axios from 'axios';
+import { api } from '../lib/api.ts'
 
 interface TriageDrawerProps {
   runId: string | null;
@@ -78,7 +78,7 @@ export default function TriageDrawer({ runId, alert: alertData, onClose }: Triag
       let response;
 
       if (action === 'freeze_card') {
-        const profile = await axios.get(`http://localhost:3000/api/customer/${alertData.customer_id}/profile`);
+        const profile = await api.get(`http://localhost:3000/api/customer/${alertData.customer_id}/profile`);
         const cardId = profile.data.cards[0]?.id;
 
         if (!cardId) {
@@ -86,7 +86,7 @@ export default function TriageDrawer({ runId, alert: alertData, onClose }: Triag
           return;
         }
 
-        response = await axios.post('http://localhost:3000/api/action/freeze-card', {
+        response = await api.post('http://localhost:3000/api/action/freeze-card', {
           cardId,
           reason: 'suspected_fraud',
         });
@@ -98,7 +98,7 @@ export default function TriageDrawer({ runId, alert: alertData, onClose }: Triag
             return;
           }
 
-          response = await axios.post('http://localhost:3000/api/action/freeze-card', {
+          response = await api.post('http://localhost:3000/api/action/freeze-card', {
             cardId,
             otp,
             reason: 'suspected_fraud',
@@ -111,7 +111,7 @@ export default function TriageDrawer({ runId, alert: alertData, onClose }: Triag
           return;
         }
 
-        response = await axios.post('http://localhost:3000/api/action/open-dispute', {
+        response = await api.post('http://localhost:3000/api/action/open-dispute', {
           txnId: alertData.suspect_txn_id,
           reasonCode: '10.4',
           description: 'Customer did not authorize transaction',
@@ -119,7 +119,7 @@ export default function TriageDrawer({ runId, alert: alertData, onClose }: Triag
         });
       } 
       else if (action === 'mark_false_positive') {
-        response = await axios.post('http://localhost:3000/api/action/mark-false-positive', {
+        response = await api.post('http://localhost:3000/api/action/mark-false-positive', {
           alertId: alertData.id,
           notes: 'Verified with customer - legitimate transaction',
         });

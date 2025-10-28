@@ -1,10 +1,19 @@
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_KEY = import.meta.env.VITE_API_KEY || 'zeta_dev_key_12345';
 
 export const api = axios.create({
   baseURL: API_URL,
   timeout: 10000
+});
+
+// Add API key to all action requests
+api.interceptors.request.use((config) => {
+  if (config.url?.includes('/api/action')) {
+      config.headers['X-API-Key'] = API_KEY;
+  }
+  return config;
 });
 
 // Add response interceptor for rate limiting

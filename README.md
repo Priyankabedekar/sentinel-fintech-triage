@@ -62,7 +62,7 @@ All request/response bodies scanned and redacted automatically.
 curl -X POST http://localhost:3000/api/action/freeze-card \
   -H "X-API-Key: zeta_dev_key_12345" \
   -H "Content-Type: application/json" \
-  -d '{"cardId":"..."}'
+  -d '{"cardId":"<Valid_CardID from Prisma studio>"}'
 ```
 
 ### Idempotency

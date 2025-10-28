@@ -40,6 +40,7 @@ services:
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
       NODE_ENV: ${NODE_ENV}
+      API_KEY: ${API_KEY}
     depends_on:
       postgres:
         condition: service_healthy
@@ -59,6 +60,7 @@ services:
       - "5173:5173"
     environment:
       VITE_API_URL: http://localhost:${PORT}
+      VITE_API_KEY: ${API_KEY}
     volumes:
       - ./web:/app
       - /app/node_modules
