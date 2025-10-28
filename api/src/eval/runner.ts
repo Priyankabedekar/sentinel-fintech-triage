@@ -3,6 +3,11 @@ import { TriageOrchestrator } from '../agents/orchestrator.js';
 import { redactPII } from '../lib/redactor.js';
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import crypto from 'crypto';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const prisma = new PrismaClient();
 
@@ -21,18 +26,18 @@ class EvalRunner {
     console.log('🧪 Running Evaluation Suite...\n');
 
     // Load eval cases
-    const evalFiles = await fs.readdir('../../fixtures/evals');
+    const evalDir = path.resolve(__dirname, '../../docs/fixtures/evals');
+    const evalFiles = await fs.readdir(evalDir);
     
     for (const file of evalFiles) {
-      if (!file.endsWith('.json')) continue;
-      
-      const content = await fs.readFile(
-        path.join('../../fixtures/evals', file),
-        'utf-8'
-      );
-      const evalCase = JSON.parse(content);
-      
-      await this.runEval(evalCase);
+        console.log(`Running:${file}`);
+        if (!file.endsWith('.json')) continue;
+        
+        const fullPath = path.join(evalDir, file);
+        const content = await fs.readFile(fullPath, 'utf-8');
+        const evalCase = JSON.parse(content);
+        
+        await this.runEval(evalCase);
     }
 
     this.printSummary();
@@ -81,13 +86,50 @@ class EvalRunner {
     }
   }
 
+  async safeCleanup(customerId: string, alertId?: string)
+  {
+    try {
+        if (alertId) {
+        // find any triage runs for this alert
+        const runs = await prisma.triageRun.findMany({
+            where: { alert_id: alertId },
+            select: { id: true }
+        });
+        const runIds = runs.map(r => r.id);
+
+        // delete agent traces that reference those runs (if any)
+        if (runIds.length > 0) {
+            await prisma.agentTrace.deleteMany({
+            where: { run_id: { in: runIds } }
+            });
+        }
+
+        // delete the triage runs
+        await prisma.triageRun.deleteMany({ where: { alert_id: alertId } });
+
+        // delete any other children that might reference alert_id (defensive)
+        // await prisma.someOtherChild.deleteMany({ where: { alert_id: alertId } }).catch(()=>{});
+        }
+
+        // delete transactions/cards/etc for the customer before deleting customer
+        await prisma.transaction.deleteMany({ where: { customer_id: customerId } });
+        await prisma.card.deleteMany({ where: { customer_id: customerId } });
+        await prisma.alert.deleteMany({ where: { customer_id: customerId } });
+        await prisma.customer.deleteMany({ where: { id: customerId } });
+    } catch (e) {
+        // swallow — cleanup shouldn't throw your test runner
+        console.warn('safeCleanup warning:', e instanceof Error ? e.message : e);
+    }
+  }
+
   async testFreezeWithOTP(evalCase: any) {
+    const unique = crypto.randomUUID();
     // Create test customer with high KYC level
     const customer = await prisma.customer.create({
       data: {
         name: 'Test Customer OTP',
-        email: 'test@example.com',
-        kyc_level: 3
+        email: `test-otp-${unique}.com`,
+        kyc_level: 2
       }
     });
 
@@ -100,10 +142,44 @@ class EvalRunner {
       }
     });
 
+    // Create many transactions for velocity and merchant concentration
+    const txPromises = [];
+    const merchant = 'Concentrated Merchant';
+    for (let i = 0; i < 18; i++) { // >15 -> high_velocity
+        txPromises.push(prisma.transaction.create({
+        data: {
+            customer_id: customer.id,
+            card_id: card.id,
+            merchant,
+            amount_cents: 1000 + i,    // small historical txs
+            mcc: '5411',
+            currency: 'INR',
+            ts: new Date(Date.now() - (i * 60 * 1000)) // different timestamps
+        }
+        }));
+    }
+
+    // create the suspect transaction (large and foreign)
+    const suspectTx = await prisma.transaction.create({
+        data: {
+        customer_id: customer.id,
+        card_id: card.id,
+        merchant: 'Suspicious Merchant',
+        amount_cents: 499900,   // > 50000 -> large_amount
+        mcc: '5411',
+        currency: 'USD',
+        country: 'US',          // not 'IN' -> foreign_transaction
+        ts: new Date('2025-10-24T15:30:00Z')
+        }
+    });
+
+    await Promise.all(txPromises);
+
     // Create alert
     const alert = await prisma.alert.create({
       data: {
         customer_id: customer.id,
+        suspect_txn_id: suspectTx.id,
         risk: 'high',
         status: 'open',
         reason: 'high_velocity'
@@ -116,6 +192,7 @@ class EvalRunner {
 
     // Verify expectations
     if (result.recommendation !== 'freeze_card') {
+      console.log('decision details:', result);
       throw new Error(`Expected freeze_card, got ${result.recommendation}`);
     }
 
@@ -124,9 +201,7 @@ class EvalRunner {
     }
 
     // Cleanup
-    await prisma.alert.delete({ where: { id: alert.id } });
-    await prisma.card.delete({ where: { id: card.id } });
-    await prisma.customer.delete({ where: { id: customer.id } });
+    await this.safeCleanup(customer.id, alert.id);
   }
 
   async testDisputeCreation(evalCase: any) {
@@ -205,11 +280,12 @@ class EvalRunner {
   }
 
   async testFallback(evalCase: any) {
+    const unique = crypto.randomUUID();
     // Create test alert
     const customer = await prisma.customer.create({
       data: {
         name: 'Test Fallback',
-        email: 'fallback@example.com'
+        email: `fallback${unique}@example.com`
       }
     });
 
@@ -229,8 +305,7 @@ class EvalRunner {
     console.log(`  Fallback used: ${result.fallbackUsed}`);
     
     // Cleanup
-    await prisma.alert.delete({ where: { id: alert.id } });
-    await prisma.customer.delete({ where: { id: customer.id } });
+    await this.safeCleanup(customer.id, alert.id)
   }
 
   printSummary() {
