@@ -379,7 +379,7 @@ scrape_configs:
     scrape_interval: 15s
 ```
 
-### Grafana Dashboards
+### Grafana Dashboards (to be done)
 Import provided dashboard: `grafana/zeta-dashboard.json`
 
 **Key Panels:**
