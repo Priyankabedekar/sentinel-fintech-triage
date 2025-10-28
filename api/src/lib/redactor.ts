@@ -55,7 +55,7 @@ export function redactObject(obj: any): { redacted: any; masked: boolean } {
       const redactedObj: any = {};
       for (const [key, val] of Object.entries(value)) {
         // Redact sensitive field names
-        if (key.toLowerCase().includes('card') || key.toLowerCase().includes('pan')) {
+        if (key.toLowerCase().includes('pan')) {
           if (typeof val === 'string') {
             const { redacted, masked } = redactPII(val);
             if (masked) globalMasked = true;

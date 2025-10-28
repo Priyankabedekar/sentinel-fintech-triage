@@ -12,6 +12,8 @@ RUN npm install
 
 RUN npx prisma generate
 
+COPY ../docs ./docs
+
 COPY . .
 
 EXPOSE 3000

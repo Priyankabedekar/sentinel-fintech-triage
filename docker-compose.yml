@@ -48,7 +48,7 @@ services:
     volumes:
       - ./api:/app
       - /app/node_modules
-      - ./docs:/app/docs 
+      - ./docs/fixtures/evals:/app/docs/fixtures/evals
     working_dir: /app
     command: npm run dev
 

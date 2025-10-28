@@ -26,7 +26,9 @@ class EvalRunner {
     console.log('🧪 Running Evaluation Suite...\n');
 
     // Load eval cases
-    const evalDir = path.resolve(__dirname, '../../docs/fixtures/evals');
+    const evalDir = path.resolve('/app/docs/fixtures/evals');
+    console.log(`📂 Loading evals from ${evalDir}`);
+    
     const evalFiles = await fs.readdir(evalDir);
     
     for (const file of evalFiles) {

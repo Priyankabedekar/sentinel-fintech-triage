@@ -9,10 +9,10 @@ git clone <repo> && cd fintech-case-console
 cp .env.example .env
 
 # 2. Start all services
-docker compose up -d
+docker compose up --build -d
 
 # 3. Seed database
-docker compose exec api npm run db:seed
+docker exec -it zeta-api npm run db:seed
 ```
 
 **Access:**
@@ -126,8 +126,7 @@ curl http://localhost:3000/metrics
 
 ## 🧪 Running Evaluations
 ```bash
-cd api
-npm run eval
+docker exec -it zeta-api npm run eval
 ```
 
 **Output:**
@@ -306,7 +305,7 @@ docker compose exec redis redis-cli ZRANGE ratelimit:192.168.65.1 0 -1 WITHSCORE
 ```bash
 # Test redaction directly
 curl -X POST http://localhost:3000/api/test-redaction \
-  -d '{"text":"Card 4111111111111111"}'
+  -d '{"text":"pan 4111111111111111"}'
 
 # Check logs for masked=true
 docker compose logs api | grep "masked"
