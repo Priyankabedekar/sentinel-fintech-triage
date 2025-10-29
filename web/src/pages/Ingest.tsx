@@ -28,7 +28,8 @@ export default function Ingest() {
       let transactions;
 
       if (mode === "json") {
-        transactions = JSON.parse(jsonInput);
+        const parsed = JSON.parse(jsonInput);
+        transactions = Array.isArray(parsed) ? parsed : parsed.transactions;
       } else if (file) {
         const text = await file.text();
         const lines = text.split("\n").filter((l) => l.trim());
@@ -64,17 +65,24 @@ export default function Ingest() {
   };
 
   const sampleJson = `{
-  "transactions": [
+[
     {
-      "customer_id": "uuid-here",
-      "card_id": "uuid-here",
+      "customer_id": "valid_uuid-here",
+      "card_id": "valid_uuid-here",
       "merchant": "Amazon India",
       "amount_cents": 15000,
       "mcc": "5999",
       "currency": "INR"
-    }
-  ]
-}`;
+    },
+    {
+      "customer_id": "valid_uuid-here",
+      "card_id": "valid_uuid-here",
+      "merchant": "Amazon India",
+      "amount_cents": 15000,
+      "mcc": "5999",
+      "currency": "INR"
+    },
+]`;
 
   return (
     <div className="ingest-page">

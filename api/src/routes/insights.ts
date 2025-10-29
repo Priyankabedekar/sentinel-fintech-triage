@@ -80,7 +80,7 @@ router.get('/:customerId/summary', async (req, res) => {
     // Simple anomaly detection (amounts > 3x average)
     const avgAmount = totalSpend / transactions.length;
     const anomalies = transactions
-      .filter(t => t.amount_cents > avgAmount * 3)
+      .filter(t => t.amount_cents > avgAmount * 1.5)
       .map(t => ({
         id: t.id,
         merchant: t.merchant,

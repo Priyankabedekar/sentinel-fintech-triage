@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { rateLimiter } from '../lib/redis.js';
+import { rateLimitBlocks } from '../lib/metrics.js';
 
 export async function rateLimitMiddleware(
   req: Request,
@@ -12,6 +13,7 @@ export async function rateLimitMiddleware(
   const result = await rateLimiter.checkLimit(clientId);
   
   if (!result.allowed) {
+    rateLimitBlocks.inc({ client: clientId });
     res.set('Retry-After', result.retryAfter?.toString() || '1');
     return res.status(429).json({
       error: 'Too many requests',
