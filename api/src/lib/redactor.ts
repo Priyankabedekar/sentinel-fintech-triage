@@ -41,6 +41,9 @@ export function redactObject(obj: any): { redacted: any; masked: boolean } {
   let globalMasked = false;
 
   function redactRecursive(value: any): any {
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
     if (typeof value === 'string') {
       const { redacted, masked } = redactPII(value);
       if (masked) globalMasked = true;

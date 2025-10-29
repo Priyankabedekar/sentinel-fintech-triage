@@ -1,12 +1,12 @@
 :root {
 
-  --color-primary: #2d6a5c;
-  --color-primary-hover: #1f5447;
-  --color-primary-light: #e8f1ef;
+  --color-primary: #7256FF;
+  --color-primary-hover: #593FCC;
+  --color-primary-light: #ece9ff;
   
-  --color-secondary: #d97706;
-  --color-secondary-hover: #b45309;
-  --color-secondary-light: #fef3c7;
+  --color-secondary: #4b4c9c;
+  --color-secondary-hover: #3a3a7a;
+  --color-secondary-light: #e6e6f9;
   
   --color-danger: #dc2626;
   --color-danger-hover: #b91c1c;
