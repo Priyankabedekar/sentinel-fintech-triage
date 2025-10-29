@@ -99,7 +99,9 @@ EXPLAIN ANALYZE:
 ## 📊 Metrics & Observability
 
 ### Prometheus Metrics
-```
+```bash
+curl http://localhost:9090/query
+
 # Request latency
 api_request_latency_ms{method,route,status}
 
@@ -119,7 +121,7 @@ action_blocked_total{policy}
 ```bash
 curl http://localhost:3000/metrics
 
-# Or in Grafana dashboard (if configured)
+# Or in Grafana dashboard (not yet configured)
 ```
 
 ---
