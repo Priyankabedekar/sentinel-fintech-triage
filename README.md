@@ -430,5 +430,3 @@ Built for Zeta assignment by Priyanka Bedekar.
 - PostgreSQL + Redis
 - Docker + Docker Compose
 - Prometheus + Grafana (optional)
-
-**Contact:** priyankavbedekar@gmail.com
